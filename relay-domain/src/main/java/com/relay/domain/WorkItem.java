@@ -42,11 +42,12 @@ public final class WorkItem {
     boolean validTransition = status == Status.OPEN
         && nextStatus == Status.IN_PROGRESS
         || status == Status.IN_PROGRESS
-            && nextStatus == Status.DONE;
+        && nextStatus == Status.DONE;
 
     if (!validTransition) {
-      throw new IllegalStateException(
-          "Cannot move from " + status + " to " + nextStatus);
+      throw new InvalidWorkItemTransitionException(
+          "Cannot move from " + status + " to " + nextStatus
+        );
     }
 
     status = nextStatus;

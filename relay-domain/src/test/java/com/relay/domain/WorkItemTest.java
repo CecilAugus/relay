@@ -43,7 +43,7 @@ public class WorkItemTest {
         Instant.parse("2026-01-01T10:00:00Z"));
 
     assertThrows(
-        IllegalStateException.class,
+        InvalidWorkItemTransitionException.class,
         () -> workItem.moveTo(WorkItem.Status.DONE));
   }
 
@@ -56,7 +56,7 @@ public class WorkItemTest {
     workItem.moveTo(WorkItem.Status.DONE);
 
     assertThrows(
-        IllegalStateException.class,
+        InvalidWorkItemTransitionException.class,
         () -> workItem.moveTo(WorkItem.Status.OPEN));
   }
 
@@ -68,7 +68,7 @@ public class WorkItemTest {
     workItem.moveTo(WorkItem.Status.IN_PROGRESS);
 
     assertThrows(
-        IllegalStateException.class,
+        InvalidWorkItemTransitionException.class,
         () -> workItem.moveTo(WorkItem.Status.OPEN));
   }
 
