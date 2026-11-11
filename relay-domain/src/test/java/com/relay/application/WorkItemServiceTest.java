@@ -3,6 +3,7 @@ package com.relay.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +69,51 @@ class WorkItemServiceTest {
         var found = service.findById(UUID.randomUUID());
 
         assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void findAllWorkItemsReturnsAllSavedItems() {
+        // Arrange: save two distinct items through the service.
+        WorkItem first = service.create(TITLE, CREATED_AT);
+        WorkItem second = service.create("Add tests", CREATED_AT);
+
+        // Act: ask the service for every work item.
+        Collection<WorkItem> found = service.findAllWorkItems();
+
+        // Assert: both saved items are present in the returned collection.
+        assertEquals(2, found.size());
+        assertTrue(found.contains(first));
+        assertTrue(found.contains(second));
+    }
+
+    @Test
+    void removeWorkItemDeletesExistingItem() {
+        // Arrange: create an item so the repository has something to remove.
+        WorkItem created = service.create(TITLE, CREATED_AT);
+
+        // Act: ask the service to remove it.
+        service.removeWorkItem(created.id());
+
+        // Assert: the item is no longer returned by the repository-backed lookup.
+        assertTrue(service.findById(created.id()).isEmpty());
+    }
+
+    @Test
+    void removeWorkItemThrowsIfIdIsNull() {
+        // A missing ID argument is invalid input, not a not-found resource.
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> service.removeWorkItem(null));
+    }
+
+    @Test
+    void removeWorkItemThrowsIfItemDoesNotExist() {
+        // A valid but unknown ID represents a requested resource that is absent.
+        UUID nonexistentId = UUID.randomUUID();
+
+        assertThrows(
+                WorkItemNotFoundException.class,
+                () -> service.removeWorkItem(nonexistentId));
     }
 
     @Test

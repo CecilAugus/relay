@@ -1,6 +1,8 @@
 package com.relay.application;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -55,4 +57,21 @@ public final class WorkItemService {
 
         item.moveTo(nextStatus);
     }
+
+    public Collection<WorkItem> findAllWorkItems() {
+        return repository.findAll();
+    } 
+
+    public void removeWorkItem(UUID id) {
+
+        if (id == null) {
+            throw new IllegalArgumentException("id can't be null");
+        }
+
+        if (!repository.remove(id)) {
+            throw new WorkItemNotFoundException("workItem wasn't found");
+        }
+    }
+
+
 }

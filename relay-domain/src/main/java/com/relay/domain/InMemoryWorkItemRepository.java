@@ -1,7 +1,6 @@
 package com.relay.domain;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,5 +30,16 @@ public final class InMemoryWorkItemRepository implements WorkItemRepository {
 
   public Collection<WorkItem> findAll() {
     return List.copyOf(this.workItems.values());
+  }
+
+  public boolean remove(UUID id) {
+    
+    if (workItems.containsKey(id)) {
+      workItems.remove(id);
+      return true; 
+
+    } else {
+      return false; 
+    }
   }
 }

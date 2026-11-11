@@ -2,9 +2,11 @@ package com.relay.api;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -98,7 +100,7 @@ public final class WorkItemController {
         // Take {id} from the URL and convert it to a UUID 
         @PathVariable("id") UUID id,
         // Read the JSON request body and convert it into this record
-        @RequestBody ChangeWorkItemStatusRequest request 
+        @Valid @RequestBody ChangeWorkItemStatusRequest request 
     ) {
 
         // Delegate the operation to the service. It checks the item and applies
@@ -107,5 +109,35 @@ public final class WorkItemController {
 
         // 204 means success with no response body
         return ResponseEntity.noContent().build();
+    }
+
+    // Handles GET /work-items. This is distinct from GET /work-items/{id}
+    // The empty @GetMapping uses the class-level /work-items path
+    @GetMapping 
+    public ResponseEntity<List<WorkItemResponse>> findAll() {
+
+        // Convert each domain object to the API response shape used by other endpoints
+        List<WorkItemResponse> response = this.workItemService.findAllWorkItems()
+            .stream()
+            .map(item -> new WorkItemResponse(
+                item.id(),
+                item.title(),
+                item.creationTime(),
+                item.status()
+            ))
+            .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> removeWorkItem(
+        // Spring takes the {id} URL segment and converts to a UUID
+        @PathVariable("id") UUID id 
+    ) {
+       this.workItemService.removeWorkItem(id); 
+
+       // 204 means deletion succeeded and there's no response body
+       return ResponseEntity.noContent().build();
     }
 }

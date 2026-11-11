@@ -11,4 +11,6 @@ public interface WorkItemRepository {
   public Optional<WorkItem> findById(UUID id);
 
   public Collection<WorkItem> findAll();
+
+  public boolean remove(UUID id);
 }

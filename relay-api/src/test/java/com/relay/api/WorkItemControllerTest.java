@@ -1,6 +1,7 @@
 package com.relay.api;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -128,6 +130,39 @@ class WorkItemControllerTest {
     }
 
     @Test
+    void findAllReturns200AndAllWorkItems() throws Exception {
+        // Arrange: have the mocked service provide two work items.
+        WorkItem first = new WorkItem(
+                "Learn Spring",
+                Instant.parse("2026-11-08T10:00:00Z"));
+        WorkItem second = new WorkItem(
+                "Add list endpoint",
+                Instant.parse("2026-11-09T10:00:00Z"));
+        when(workItemService.findAllWorkItems())
+                .thenReturn(List.of(first, second));
+
+        // Act + assert: GET /work-items should return a JSON array containing
+        // both items, with each item converted to the API response shape.
+        mockMvc.perform(get("/work-items"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(first.id().toString()))
+                .andExpect(jsonPath("$[0].title").value("Learn Spring"))
+                .andExpect(jsonPath("$[1].id").value(second.id().toString()))
+                .andExpect(jsonPath("$[1].title").value("Add list endpoint"));
+    }
+
+    @Test
+    void findAllReturns200AndEmptyArrayWhenThereAreNoWorkItems() throws Exception {
+        // An empty collection is a successful list result, not a 404.
+        when(workItemService.findAllWorkItems()).thenReturn(List.of());
+
+        mockMvc.perform(get("/work-items"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
+
+    @Test
     void changeStatusReturns204AndPassesIdAndStatusToService() throws Exception {
         // Arrange: create an ID that will be placed in the request URL.
         UUID id = UUID.randomUUID();
@@ -142,6 +177,33 @@ class WorkItemControllerTest {
         // Verify Spring/controller converted both inputs correctly and delegated
         // the change to the service.
         verify(workItemService).moveTo(id, WorkItem.Status.IN_PROGRESS);
+    }
+
+    @Test
+    void changeStatusReturns400WhenStatusIsMissing() throws Exception {
+        // Without a status property, JSON conversion produces a null enum value.
+        // @NotNull should reject it before the controller calls the service.
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(patch("/work-items/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(workItemService, never()).moveTo(any(), any());
+    }
+
+    @Test
+    void changeStatusReturns400WhenStatusIsNull() throws Exception {
+        // Explicit JSON null also violates @NotNull on the record component.
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(patch("/work-items/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":null}"))
+                .andExpect(status().isBadRequest());
+
+        verify(workItemService, never()).moveTo(any(), any());
     }
 
     @Test
@@ -174,5 +236,32 @@ class WorkItemControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void removeWorkItemReturns204AndPassesIdToService() throws Exception {
+        // Arrange: use a known UUID as the resource identifier.
+        UUID id = UUID.randomUUID();
+
+        // Act: DELETE the resource and verify the success status has no body.
+        mockMvc.perform(delete("/work-items/{id}", id))
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
+
+        // Confirm that the controller delegated the correct identifier.
+        verify(workItemService).removeWorkItem(id);
+    }
+
+    @Test
+    void removeWorkItemReturns404WhenItemDoesNotExist() throws Exception {
+        // Arrange: configure the service to report that this resource is absent.
+        UUID missingId = UUID.randomUUID();
+        doThrow(new WorkItemNotFoundException("Item not found"))
+                .when(workItemService)
+                .removeWorkItem(missingId);
+
+        // Act + assert: the REST advice should translate not-found to HTTP 404.
+        mockMvc.perform(delete("/work-items/{id}", missingId))
+                .andExpect(status().isNotFound());
     }
 }
